@@ -1,0 +1,25 @@
+# golangci-lint v2 configuration.
+# pg_query_go is cgo, so linters that compile code inherit CGO_ENABLED from the
+# environment (CI sets CGO_ENABLED=1).
+version: "2"
+
+linters:
+  # Start from the standard set (errcheck, govet, ineffassign, staticcheck,
+  # unused) and add a few low-noise extras.
+  default: standard
+  enable:
+    - misspell
+    - gocritic
+    - revive
+  exclusions:
+    rules:
+      # SchemaOf / TableOf are intentionally clear names for extracting the
+      # parts of a qualified "schema.table" key; the minor stutter is accepted.
+      - path: internal/schema/ir.go
+        linters: [revive]
+        text: stutters
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
