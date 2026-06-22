@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # pg_query_go vendors the PostgreSQL parser in C, so every Go step needs cgo.
+  CGO_ENABLED: "1"
+  GO_VERSION: "1.25"
+
+jobs:
+  lint:
+    name: Lint & format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::these files are not gofmt-ed:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
+
+  test:
+    name: Test & coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Test with race detector and coverage
+        # -coverpkg=./... attributes coverage from every test binary to all
+        # packages (so e.g. internal/schema, exercised by other packages' tests,
+        # is counted too).
+        run: go test -race -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
+
+      - name: Coverage summary and threshold gate
+        run: |
+          go tool cover -func=coverage.out | tee coverage.txt
+          total=$(awk '/^total:/ {gsub(/%/,"",$3); print $3}' coverage.txt)
+          threshold=70
+          {
+            echo "### Test coverage"
+            echo ""
+            echo "**Total: ${total}%** (threshold ${threshold}%)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Total coverage: ${total}% (threshold ${threshold}%)"
+          if awk -v t="$total" -v th="$threshold" 'BEGIN { exit (t+0 >= th+0) ? 0 : 1 }'; then
+            echo "Coverage gate passed."
+          else
+            echo "::error::coverage ${total}% is below threshold ${threshold}%"
+            exit 1
+          fi
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: |
+            coverage.out
+            coverage.txt
+          if-no-files-found: warn
+
+  docker:
+    name: Docker build & smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: stratum:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test image
+        # Mount the fixtures read-only and write to a separate writable volume,
+        # then assert the tool produced a valid Mermaid ERD.
+        run: |
+          mkdir -p out
+          docker run --rm \
+            -v "$PWD/testdata:/data:ro" \
+            -v "$PWD/out:/out" \
+            stratum:ci \
+            --migrations-path /data/migrations --output /out/SCHEMA.md --verbose
+          if [ ! -f out/SCHEMA.md ]; then
+            echo "::error::stratum did not produce SCHEMA.md"
+            exit 1
+          fi
+          if ! grep -q "erDiagram" out/SCHEMA.md; then
+            echo "::error::SCHEMA.md does not contain a Mermaid erDiagram block"
+            exit 1
+          fi
+          echo "Docker smoke test passed."

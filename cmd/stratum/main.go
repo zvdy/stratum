@@ -35,7 +35,7 @@ func main() {
 		Long:          "stratum statically parses PostgreSQL migration .sql files and renders a Mermaid ERD inside a Markdown document. No database connection is used.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return run(opts)
 		},
 	}
