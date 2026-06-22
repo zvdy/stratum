@@ -8,6 +8,9 @@
 *.out
 coverage.txt
 
+# CI-generated example output (the committed SCHEMA.md/SCHEMA.auth.md are kept)
+examples/**/SCHEMA.generated.md
+
 # Editor/OS
 .DS_Store
 .idea/

@@ -1,0 +1,54 @@
+name: Example ERD
+
+# Exercises the stratum composite action (action.yml) end-to-end by running it
+# against the bundled e-commerce example and verifying it produces a valid
+# Mermaid ERD. The action runs with push: false, so nothing is committed back —
+# the generated file is uploaded as a build artifact instead.
+
+on:
+  pull_request:
+  push:
+    branches: [main, master, "claude/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: example-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Generate ERD via action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the stratum action on the e-commerce example
+        uses: ./
+        with:
+          migrations-path: examples/ecommerce/migrations
+          output: examples/ecommerce/SCHEMA.generated.md
+          schema: public
+          verbose: "true"
+
+      - name: Verify generated ERD
+        run: |
+          out=examples/ecommerce/SCHEMA.generated.md
+          if [ ! -f "$out" ]; then
+            echo "::error::action did not produce $out"
+            exit 1
+          fi
+          if ! grep -q "erDiagram" "$out"; then
+            echo "::error::$out has no Mermaid erDiagram block"
+            exit 1
+          fi
+          echo "Action produced a valid ERD:"
+          grep -E "^\s+\w+ \{|}o--\|\|" "$out" | head -n 40
+
+      - name: Upload generated ERD
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-erd
+          path: examples/ecommerce/SCHEMA.generated.md

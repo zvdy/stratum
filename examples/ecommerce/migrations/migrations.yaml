@@ -1,0 +1,8 @@
+# Explicit migration order. When this manifest is present, stratum applies the
+# files in exactly this order instead of sorting by filename prefix.
+migrations:
+  - 001_init_public.sql
+  - 002_orders.sql
+  - 003_auth_schema.sql
+  - 004_alterations.sql
+  - 005_seed_and_cleanup.sql

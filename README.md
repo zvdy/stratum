@@ -86,6 +86,24 @@ When present, the manifest order is used verbatim.
 
 See [`action.yml`](./action.yml) for all inputs.
 
+## Example
+
+A complete, multi-schema e-commerce example lives in
+[`examples/ecommerce/`](./examples/ecommerce/): five migrations (plus a
+`migrations.yaml` manifest) covering PKs/FKs, composite keys, unique indexes,
+checks, `ALTER` evolution, a `DROP`, and a separate `auth` schema. The committed
+[`SCHEMA.md`](./examples/ecommerce/SCHEMA.md) (public) and
+[`SCHEMA.auth.md`](./examples/ecommerce/SCHEMA.auth.md) (`--schema auth`) are the
+generated output:
+
+```bash
+stratum --migrations-path examples/ecommerce/migrations --output examples/ecommerce/SCHEMA.md
+stratum --migrations-path examples/ecommerce/migrations --schema auth --output examples/ecommerce/SCHEMA.auth.md
+```
+
+The [`Example ERD`](./.github/workflows/example.yml) workflow runs the composite
+action against this example on every push/PR.
+
 ## Docker
 
 ```bash
