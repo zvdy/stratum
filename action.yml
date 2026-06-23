@@ -62,13 +62,13 @@ runs:
       with:
         go-version: "1.25"
 
-    # Builds the binary from this action's source checkout. pg_query_go needs
-    # cgo; ubuntu runners ship gcc by default so CGO_ENABLED=1 works out of box.
+    # Builds the binary from this action's source checkout. stratum is pure Go
+    # (hand-written SQL parser), so no C toolchain is required.
     - name: Build stratum
       shell: bash
       run: |
         cd "${{ github.action_path }}"
-        CGO_ENABLED=1 go build -o "${RUNNER_TEMP}/stratum" ./cmd/stratum
+        CGO_ENABLED=0 go build -o "${RUNNER_TEMP}/stratum" ./cmd/stratum
 
     - name: Run stratum
       shell: bash

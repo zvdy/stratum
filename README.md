@@ -7,24 +7,26 @@ calls** — every fact in the diagram is derived from the migration files
 themselves, so it runs fully offline (e.g. in a GitHub Actions runner).
 
 It works by replaying your migrations in order against an in-memory schema model
-and rendering the result. Parsing uses
-[`pg_query_go`](https://github.com/pganalyze/pg_query_go) (the real PostgreSQL
-grammar), so it understands the SQL your database actually accepts.
+and rendering the result. Parsing uses a small, **hand-written pure-Go** SQL DDL
+parser (no cgo, no third-party parser) that models the subset of PostgreSQL DDL
+an ERD needs and defensively skips everything else.
 
 ## What it understands
 
-- `CREATE TABLE` — columns, inline/■table-level primary keys, foreign keys
-  (`REFERENCES`), `UNIQUE`, `CHECK`, `NOT NULL`, `DEFAULT`; inline and
-  table-level constraints
-- `ALTER TABLE` — add/drop/rename column, alter column type, add FK / UNIQUE /
-  CHECK constraint, rename table
-- `CREATE [UNIQUE] INDEX`
-- `DROP TABLE`
+- `CREATE TABLE` — columns, inline and table-level primary keys, foreign keys
+  (`REFERENCES`), `UNIQUE`, `CHECK`, `NOT NULL`, `DEFAULT`; composite and
+  self-referential keys; multi-word types (`double precision`,
+  `character varying(n)`, `timestamp with time zone`, arrays)
+- `ALTER TABLE` — add/drop/rename column, alter column type, set/drop default,
+  add constraint (FK / UNIQUE / CHECK), drop constraint, rename table
+- `CREATE [UNIQUE] INDEX` and `DROP INDEX`
+- `DROP TABLE` and `DROP SCHEMA`
 - Multiple schemas (`public.users`, etc.); unqualified names default to `public`
 
-DML (`INSERT`/`UPDATE`/`DELETE`), procedural `DO $$ … $$` blocks, comments, and
-other non-structural statements are skipped silently. Unknown statement types
-produce a warning and are skipped — the parser never panics.
+DML (`INSERT`/`UPDATE`/`DELETE`), procedural `DO $$ … $$` blocks / function
+bodies, comments, and other non-structural statements are skipped (their `;`
+inside dollar-quotes won't break parsing). Unrecognized statements are skipped,
+never fatal; the parser never panics.
 
 ## Install / build
 
@@ -32,7 +34,7 @@ produce a warning and are skipped — the parser never panics.
 go build -o stratum ./cmd/stratum
 ```
 
-> Note: `pg_query_go` uses cgo, so a C compiler (gcc/clang) is required to build.
+> Pure Go — no C compiler needed. `CGO_ENABLED=0` produces a fully static binary.
 
 ## Usage
 
