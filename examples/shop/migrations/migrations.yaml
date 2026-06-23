@@ -1,0 +1,8 @@
+# Explicit migration order (overrides filename sorting when present).
+migrations:
+  - 001_init.sql
+  - 002_orders.sql
+  - 003_staging_schema.sql
+  - 004_refactors.sql
+  - 005_drops.sql
+  - 006_seed.sql

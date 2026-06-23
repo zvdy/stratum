@@ -12,3 +12,6 @@ coverage.txt
 .DS_Store
 .idea/
 .vscode/
+
+# CI-generated example output
+examples/**/SCHEMA.generated.md

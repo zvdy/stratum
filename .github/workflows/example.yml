@@ -1,0 +1,60 @@
+name: Example ERD
+
+# Re-tests the stratum composite action (action.yml) end-to-end by running it
+# against the bundled shop example and verifying it produces a valid Mermaid ERD.
+# Runs with push: false, so nothing is committed back — the generated file is
+# uploaded as a build artifact instead.
+
+on:
+  pull_request:
+  push:
+    branches: [main, master, "claude/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: example-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Generate ERD via action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the stratum action on the shop example
+        uses: ./
+        with:
+          migrations-path: examples/shop/migrations
+          output: examples/shop/SCHEMA.generated.md
+          schema: public
+          verbose: "true"
+
+      - name: Verify generated ERD
+        run: |
+          out=examples/shop/SCHEMA.generated.md
+          if [ ! -f "$out" ]; then
+            echo "::error::action did not produce $out"
+            exit 1
+          fi
+          if ! grep -q "erDiagram" "$out"; then
+            echo "::error::$out has no Mermaid erDiagram block"
+            exit 1
+          fi
+          # The DROP migrations must have taken effect.
+          for gone in idx_orders_status legacy_carts staging uq_orders_coupon; do
+            if grep -q "$gone" "$out"; then
+              echo "::error::$gone should have been dropped but is present"
+              exit 1
+            fi
+          done
+          echo "Action produced a valid ERD and DROP statements took effect."
+
+      - name: Upload generated ERD
+        uses: actions/upload-artifact@v4
+        with:
+          name: shop-erd
+          path: examples/shop/SCHEMA.generated.md
