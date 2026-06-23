@@ -194,3 +194,57 @@ func (t *Table) IsFKColumn(name string) bool {
 	}
 	return false
 }
+
+// DropIndexByName removes an index of the given (bare) name from the table and
+// reports whether one was found.
+func (t *Table) DropIndexByName(name string) bool {
+	for i := range t.Indexes {
+		if t.Indexes[i].Name == name {
+			t.Indexes = append(t.Indexes[:i], t.Indexes[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// DropConstraintByName removes a foreign key or (unique) index matching the
+// constraint name and reports whether anything was removed. Constraint and index
+// names share a namespace in Postgres, so both are checked.
+func (t *Table) DropConstraintByName(name string) bool {
+	removed := false
+	for i := range t.FKs {
+		if t.FKs[i].Name == name {
+			t.FKs = append(t.FKs[:i], t.FKs[i+1:]...)
+			removed = true
+			break
+		}
+	}
+	if t.DropIndexByName(name) {
+		removed = true
+	}
+	return removed
+}
+
+// DropIndexByName removes the first index with the given bare name across all
+// tables and reports whether one was found.
+func (s *Schema) DropIndexByName(name string) bool {
+	for _, key := range s.SortedTableKeys() {
+		if s.Tables[key].DropIndexByName(name) {
+			return true
+		}
+	}
+	return false
+}
+
+// DropSchema removes every table belonging to schemaName and returns how many
+// were removed.
+func (s *Schema) DropSchema(schemaName string) int {
+	n := 0
+	for key := range s.Tables {
+		if SchemaOf(key) == schemaName {
+			delete(s.Tables, key)
+			n++
+		}
+	}
+	return n
+}

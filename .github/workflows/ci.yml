@@ -15,8 +15,8 @@ permissions:
   contents: read
 
 env:
-  # pg_query_go vendors the PostgreSQL parser in C, so every Go step needs cgo.
-  CGO_ENABLED: "1"
+  # stratum is pure Go (hand-written parser) — no cgo needed.
+  CGO_ENABLED: "0"
   GO_VERSION: "1.25"
 
 jobs:
@@ -60,9 +60,13 @@ jobs:
           cache: true
 
       - name: Test with race detector and coverage
+        # The race detector needs cgo; the rest of the project is pure Go. Ubuntu
+        # runners ship gcc, so enable cgo just for this step.
         # -coverpkg=./... attributes coverage from every test binary to all
         # packages (so e.g. internal/schema, exercised by other packages' tests,
         # is counted too).
+        env:
+          CGO_ENABLED: "1"
         run: go test -race -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
 
       - name: Coverage summary and threshold gate

@@ -1,12 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # --- build stage ------------------------------------------------------------
-# pg_query_go vendors the PostgreSQL parser in C, so cgo (gcc + musl-dev) is
-# required to build. We build statically against musl so the binary runs as-is
-# on the alpine runtime image.
+# stratum is pure Go (no cgo): the SQL parser is hand-written, so no C toolchain
+# is needed and we produce a fully static binary.
 FROM golang:1.25-alpine AS build
-
-RUN apk add --no-cache gcc musl-dev
 
 WORKDIR /src
 
@@ -16,7 +13,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=1 go build \
+RUN CGO_ENABLED=0 go build \
     -ldflags="-s -w" \
     -o /usr/local/bin/stratum \
     ./cmd/stratum
