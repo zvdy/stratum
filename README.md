@@ -117,3 +117,7 @@ go test ./...
 ```
 
 Fixtures live under `testdata/`.
+
+## License
+
+[MIT](./LICENSE) © zvdy
