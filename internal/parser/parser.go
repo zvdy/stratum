@@ -405,6 +405,11 @@ func (p *parser) parseColumnDef(t *schema.Table, key string) {
 		return
 	}
 	col := schema.Column{Name: name, Type: p.parseType()}
+	// serial pseudo-types are implicitly NOT NULL (they carry a nextval default).
+	switch col.Type {
+	case "serial", "bigserial", "smallserial":
+		col.NotNull = true
+	}
 
 	for !p.isTerminator(0) {
 		switch {
@@ -430,8 +435,16 @@ func (p *parser) parseColumnDef(t *schema.Table, key string) {
 			}
 		case p.acceptWord("references"):
 			t.FKs = append(t.FKs, p.parseInlineReferences(name))
+		case p.acceptWord("generated"):
+			// GENERATED ... AS IDENTITY columns are implicitly NOT NULL.
+			if p.parseGenerated() {
+				col.NotNull = true
+			}
+		case p.acceptWord("collate"):
+			p.nameParts() // collation name (may be schema-qualified or quoted)
 		default:
-			// Unknown column clause (GENERATED, COLLATE, ...): stop and skip rest.
+			// Unknown column clause (e.g. an unsupported storage option): stop and
+			// skip the remainder of this element.
 			p.skipElement()
 			t.AddColumn(col)
 			return
@@ -449,6 +462,31 @@ func (p *parser) parseInlineReferences(localCol string) schema.ForeignKey {
 		fk.RefColumns = cols
 	}
 	return fk
+}
+
+// parseGenerated consumes the remainder of a column's GENERATED clause (the
+// GENERATED keyword has already been accepted) and reports whether it is an
+// IDENTITY column. It handles both forms:
+//
+//	GENERATED { ALWAYS | BY DEFAULT } AS IDENTITY [ ( sequence_options ) ]
+//	GENERATED ALWAYS AS ( expr ) STORED
+func (p *parser) parseGenerated() (identity bool) {
+	p.acceptWord("always")
+	if p.acceptWord("by") {
+		p.acceptWord("default")
+	}
+	p.acceptWord("as")
+	if p.acceptWord("identity") {
+		if p.isPunct("(") {
+			p.captureParenGroup() // sequence options
+		}
+		return true
+	}
+	if p.isPunct("(") {
+		p.captureParenGroup() // generation expression
+	}
+	p.acceptWord("stored")
+	return false
 }
 
 func (p *parser) parseTableConstraint(t *schema.Table) {

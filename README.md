@@ -25,12 +25,19 @@ and rendering the result. Parsing uses a small, **hand-written pure-Go** SQL DDL
 parser (no cgo, no third-party parser) that models the subset of PostgreSQL DDL
 an ERD needs and defensively skips everything else.
 
+Relationship cardinality in the ERD reflects the constraints: a foreign key
+renders as mandatory (`}o--||`) when its columns are `NOT NULL` and optional
+(`}o--o|`) when nullable, and collapses to one-to-one (`|o--…`) when the FK
+columns are covered by a unique constraint.
+
 ## What it understands
 
 - `CREATE TABLE` — columns, inline and table-level primary keys, foreign keys
   (`REFERENCES`), `UNIQUE`, `CHECK`, `NOT NULL`, `DEFAULT`; composite and
-  self-referential keys; multi-word types (`double precision`,
-  `character varying(n)`, `timestamp with time zone`, arrays)
+  self-referential keys; `serial`/`bigserial` and `GENERATED … AS IDENTITY`
+  columns (treated as `NOT NULL`); `COLLATE`; multi-word types
+  (`double precision`, `character varying(n)`, `timestamp with time zone`,
+  arrays)
 - `ALTER TABLE` — add/drop/rename column, alter column type, set/drop default,
   add constraint (FK / UNIQUE / CHECK), drop constraint, rename table
 - `CREATE [UNIQUE] INDEX` and `DROP INDEX`

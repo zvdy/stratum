@@ -48,7 +48,9 @@ func TestRunEndToEnd(t *testing.T) {
 		t.Fatalf("reading output: %v", err)
 	}
 	doc := string(data)
-	for _, want := range []string{"erDiagram", "users", "orgs", "users }o--|| orgs"} {
+	// org_id is NOT NULL and carries a UNIQUE index, so the relation is a
+	// mandatory one-to-one: |o (zero-or-one child) -- || (exactly-one parent).
+	for _, want := range []string{"erDiagram", "users", "orgs", "users |o--|| orgs"} {
 		if !strings.Contains(doc, want) {
 			t.Errorf("output missing %q\n---\n%s", want, doc)
 		}
