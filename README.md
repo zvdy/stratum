@@ -1,4 +1,18 @@
-# stratum
+<p align="center">
+  <img src="docs/stratum-logo.png" alt="stratum logo" width="180" height="180">
+</p>
+
+<h1 align="center">stratum</h1>
+
+<p align="center">
+  <em>Static PostgreSQL migrations → Mermaid ERD — no database, no cgo.</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/zvdy/stratum/actions/workflows/ci.yml">
+    <img src="https://github.com/zvdy/stratum/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
+</p>
 
 `stratum` is a Go CLI that **statically** parses PostgreSQL migration `.sql`
 files and generates a [Mermaid](https://mermaid.js.org/) ERD embedded in a
