@@ -411,10 +411,13 @@ func (p *parser) parseColumnDef(t *schema.Table, key string) {
 		col.NotNull = true
 	}
 
+	// A leading CONSTRAINT <name> names whichever constraint clause follows it.
+	constraintName := ""
 	for !p.isTerminator(0) {
 		switch {
 		case p.acceptWord("constraint"):
-			p.ident() // named constraint; keep parsing the actual constraint
+			constraintName = p.ident() // names the next constraint clause
+			continue
 		case p.acceptWord("not"):
 			p.acceptWord("null")
 			col.NotNull = true
@@ -425,16 +428,21 @@ func (p *parser) parseColumnDef(t *schema.Table, key string) {
 			p.acceptWord("key")
 			col.PrimaryKey = true
 			col.NotNull = true
+			if constraintName != "" {
+				t.PrimaryKeyName = constraintName
+			}
 		case p.acceptWord("unique"):
-			t.Indexes = append(t.Indexes, schema.Index{Columns: []string{name}, Unique: true})
+			t.Indexes = append(t.Indexes, schema.Index{Name: constraintName, Columns: []string{name}, Unique: true})
 		case p.acceptWord("default"):
 			col.Default = p.captureExpr()
 		case p.acceptWord("check"):
 			if expr, ok := p.captureParenGroup(); ok {
-				t.Checks = append(t.Checks, expr)
+				t.Checks = append(t.Checks, schema.Check{Name: constraintName, Expr: expr})
 			}
 		case p.acceptWord("references"):
-			t.FKs = append(t.FKs, p.parseInlineReferences(name))
+			fk := p.parseInlineReferences(name)
+			fk.Name = constraintName
+			t.FKs = append(t.FKs, fk)
 		case p.acceptWord("generated"):
 			// GENERATED ... AS IDENTITY columns are implicitly NOT NULL.
 			if p.parseGenerated() {
@@ -449,6 +457,9 @@ func (p *parser) parseColumnDef(t *schema.Table, key string) {
 			t.AddColumn(col)
 			return
 		}
+		// A pending CONSTRAINT name applies only to the clause directly after it;
+		// the "constraint" case above uses continue to carry it across.
+		constraintName = ""
 	}
 	t.AddColumn(col)
 }
@@ -505,6 +516,9 @@ func (p *parser) parseTableConstraint(t *schema.Table) {
 				col.NotNull = true
 			}
 		}
+		if name != "" {
+			t.PrimaryKeyName = name
+		}
 	case p.acceptWord("unique"):
 		t.Indexes = append(t.Indexes, schema.Index{
 			Name: name, Columns: p.optColumnList(), Unique: true,
@@ -522,7 +536,7 @@ func (p *parser) parseTableConstraint(t *schema.Table) {
 		t.FKs = append(t.FKs, fk)
 	case p.acceptWord("check"):
 		if expr, ok := p.captureParenGroup(); ok {
-			t.Checks = append(t.Checks, expr)
+			t.Checks = append(t.Checks, schema.Check{Name: name, Expr: expr})
 		}
 	}
 	p.skipElement()

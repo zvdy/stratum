@@ -96,16 +96,20 @@ func writeTableSection(b *strings.Builder, t *schema.Table) {
 	}
 
 	// Checks (only those we could textualize).
-	var checks []string
+	var checks []schema.Check
 	for _, ck := range t.Checks {
-		if ck != "" {
+		if ck.Expr != "" {
 			checks = append(checks, ck)
 		}
 	}
 	if len(checks) > 0 {
 		b.WriteString("### Checks\n\n")
 		for _, ck := range checks {
-			fmt.Fprintf(b, "- `%s`\n", ck)
+			if ck.Name != "" {
+				fmt.Fprintf(b, "- **%s**: `%s`\n", ck.Name, ck.Expr)
+			} else {
+				fmt.Fprintf(b, "- `%s`\n", ck.Expr)
+			}
 		}
 		b.WriteByte('\n')
 	}

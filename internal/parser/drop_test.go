@@ -39,6 +39,50 @@ func TestDropIndexSchemaQualified(t *testing.T) {
 	}
 }
 
+func TestAlterDropConstraintRemovesNamedCheck(t *testing.T) {
+	s, warns := parseInline(t, `
+		CREATE TABLE t (
+			id serial PRIMARY KEY,
+			email text CONSTRAINT chk_email CHECK (email <> ''),
+			CONSTRAINT chk_id CHECK (id > 0)
+		);
+		ALTER TABLE t DROP CONSTRAINT chk_email;
+		ALTER TABLE t DROP CONSTRAINT chk_id;
+	`)
+	tbl := mustTable(t, s, "public.t")
+	if len(tbl.Checks) != 0 {
+		t.Errorf("both named checks should be dropped, got %+v", tbl.Checks)
+	}
+	for _, w := range warns {
+		if w.Msg != "" && (w.Msg == "ALTER TABLE public.t DROP CONSTRAINT chk_email: not found" ||
+			w.Msg == "ALTER TABLE public.t DROP CONSTRAINT chk_id: not found") {
+			t.Errorf("unexpected not-found warning: %s", w.Msg)
+		}
+	}
+}
+
+func TestAlterDropConstraintRemovesNamedPrimaryKey(t *testing.T) {
+	s, _ := parseInline(t, `
+		CREATE TABLE t (id int CONSTRAINT pk_t PRIMARY KEY, name text);
+		CREATE TABLE u (a int, b int, CONSTRAINT pk_u PRIMARY KEY (a, b));
+		ALTER TABLE t DROP CONSTRAINT pk_t;
+		ALTER TABLE u DROP CONSTRAINT pk_u;
+	`)
+	tbl := mustTable(t, s, "public.t")
+	if id, _ := tbl.Column("id"); id.PrimaryKey {
+		t.Errorf("id should no longer be PK after DROP CONSTRAINT pk_t")
+	}
+	if id, _ := tbl.Column("id"); !id.NotNull {
+		t.Errorf("dropping the PK should leave NOT NULL intact")
+	}
+	u := mustTable(t, s, "public.u")
+	for _, c := range u.Columns {
+		if c.PrimaryKey {
+			t.Errorf("composite PK column %s should be cleared after DROP CONSTRAINT pk_u", c.Name)
+		}
+	}
+}
+
 func TestAlterDropConstraintRemovesFKAndUnique(t *testing.T) {
 	s, _ := parseInline(t, `
 		CREATE TABLE orgs (id serial PRIMARY KEY);
