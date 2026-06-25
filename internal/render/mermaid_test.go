@@ -71,6 +71,45 @@ func TestSanitizeType(t *testing.T) {
 	}
 }
 
+func TestMermaidRelationCardinality(t *testing.T) {
+	build := func(notNull, unique bool) string {
+		s := schema.NewSchema()
+		s.Tables["public.parent"] = &schema.Table{
+			Name:    "public.parent",
+			Columns: []schema.Column{{Name: "id", Type: "int", NotNull: true, PrimaryKey: true}},
+		}
+		child := &schema.Table{
+			Name: "public.child",
+			Columns: []schema.Column{
+				{Name: "id", Type: "int", NotNull: true, PrimaryKey: true},
+				{Name: "parent_id", Type: "int", NotNull: notNull},
+			},
+			FKs: []schema.ForeignKey{{Columns: []string{"parent_id"}, RefTable: "public.parent"}},
+		}
+		if unique {
+			child.Indexes = append(child.Indexes, schema.Index{Columns: []string{"parent_id"}, Unique: true})
+		}
+		s.Tables["public.child"] = child
+		return Mermaid(s)
+	}
+
+	cases := []struct {
+		name            string
+		notNull, unique bool
+		want            string
+	}{
+		{"mandatory many-to-one", true, false, "child }o--|| parent"},
+		{"optional many-to-one", false, false, "child }o--o| parent"},
+		{"mandatory one-to-one", true, true, "child |o--|| parent"},
+		{"optional one-to-one", false, true, "child |o--o| parent"},
+	}
+	for _, c := range cases {
+		if got := build(c.notNull, c.unique); !strings.Contains(got, c.want) {
+			t.Errorf("%s: want relation %q in:\n%s", c.name, c.want, got)
+		}
+	}
+}
+
 func TestMermaidPKFKMarker(t *testing.T) {
 	s := schema.NewSchema()
 	s.Tables["public.t"] = &schema.Table{

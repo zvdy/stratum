@@ -21,7 +21,19 @@ type Table struct {
 	Columns []Column
 	Indexes []Index
 	FKs     []ForeignKey
-	Checks  []string
+	Checks  []Check
+	// PrimaryKeyName is the constraint name of the table's primary key, when one
+	// was declared with an explicit name. It lets ALTER TABLE ... DROP CONSTRAINT
+	// remove the primary key (whose membership is otherwise tracked as per-column
+	// flags).
+	PrimaryKeyName string
+}
+
+// Check is a CHECK constraint. Name is empty for anonymous checks. Expr is the
+// whitespace-collapsed source of the check expression, when it could be captured.
+type Check struct {
+	Name string
+	Expr string
 }
 
 // Column is a single attribute of a table.
@@ -207,10 +219,14 @@ func (t *Table) DropIndexByName(name string) bool {
 	return false
 }
 
-// DropConstraintByName removes a foreign key or (unique) index matching the
-// constraint name and reports whether anything was removed. Constraint and index
-// names share a namespace in Postgres, so both are checked.
+// DropConstraintByName removes a foreign key, (unique) index, check, or the
+// primary key matching the constraint name and reports whether anything was
+// removed. Constraint and index names share a namespace in Postgres, so all are
+// checked.
 func (t *Table) DropConstraintByName(name string) bool {
+	if name == "" {
+		return false
+	}
 	removed := false
 	for i := range t.FKs {
 		if t.FKs[i].Name == name {
@@ -220,6 +236,23 @@ func (t *Table) DropConstraintByName(name string) bool {
 		}
 	}
 	if t.DropIndexByName(name) {
+		removed = true
+	}
+	for i := range t.Checks {
+		if t.Checks[i].Name == name {
+			t.Checks = append(t.Checks[:i], t.Checks[i+1:]...)
+			removed = true
+			break
+		}
+	}
+	if t.PrimaryKeyName == name {
+		// Dropping the PK constraint clears the key membership but leaves the
+		// columns' NOT NULL in place (Postgres keeps NOT NULL as a separate
+		// constraint).
+		for i := range t.Columns {
+			t.Columns[i].PrimaryKey = false
+		}
+		t.PrimaryKeyName = ""
 		removed = true
 	}
 	return removed

@@ -81,7 +81,7 @@ func columnNote(t *schema.Table, c schema.Column) string {
 }
 
 // relations builds the sorted list of relation lines, one per foreign key.
-// Orientation follows the spec example: child }o--|| parent.
+// Orientation follows the spec example (child on the left): child <rel> parent.
 func relations(s *schema.Schema) []string {
 	var lines []string
 	for _, key := range s.SortedTableKeys() {
@@ -93,11 +93,76 @@ func relations(s *schema.Schema) []string {
 			}
 			parent := entityName(fk.RefTable)
 			label := strings.Join(fk.Columns, ", ")
-			lines = append(lines, "    "+child+" }o--|| "+parent+" : \""+label+"\"")
+			lines = append(lines, "    "+child+" "+relationSymbol(t, fk)+" "+parent+" : \""+label+"\"")
 		}
 	}
 	sort.Strings(lines)
 	return lines
+}
+
+// relationSymbol picks the Mermaid cardinality notation for a foreign key.
+// The child side is "zero or one" (|o) when the FK columns are covered by a
+// unique constraint — a one-to-one relationship — and "zero or many" (}o)
+// otherwise. The parent side is "exactly one" (||) when every FK column is
+// NOT NULL (a mandatory relationship) and "zero or one" (o|) when the FK is
+// nullable (optional). The default case (a nullable, non-unique FK is the
+// common one) yields the spec's }o--|| only when the FK is mandatory.
+func relationSymbol(t *schema.Table, fk schema.ForeignKey) string {
+	childSym := "}o"
+	if fkColumnsUnique(t, fk) {
+		childSym = "|o"
+	}
+	parentSym := "o|"
+	if fkColumnsNotNull(t, fk) {
+		parentSym = "||"
+	}
+	return childSym + "--" + parentSym
+}
+
+// fkColumnsNotNull reports whether every column of the FK is NOT NULL, which
+// makes the relationship mandatory on the child side.
+func fkColumnsNotNull(t *schema.Table, fk schema.ForeignKey) bool {
+	if len(fk.Columns) == 0 {
+		return false
+	}
+	for _, name := range fk.Columns {
+		c, ok := t.Column(name)
+		if !ok || !c.NotNull {
+			return false
+		}
+	}
+	return true
+}
+
+// fkColumnsUnique reports whether the FK's columns are exactly covered by a
+// unique index, making the relationship one-to-one.
+func fkColumnsUnique(t *schema.Table, fk schema.ForeignKey) bool {
+	if len(fk.Columns) == 0 {
+		return false
+	}
+	for _, idx := range t.Indexes {
+		if idx.Unique && sameColumnSet(idx.Columns, fk.Columns) {
+			return true
+		}
+	}
+	return false
+}
+
+// sameColumnSet reports whether a and b contain the same set of column names.
+func sameColumnSet(a, b []string) bool {
+	if len(a) != len(b) || len(a) == 0 {
+		return false
+	}
+	seen := make(map[string]bool, len(a))
+	for _, x := range a {
+		seen[x] = true
+	}
+	for _, y := range b {
+		if !seen[y] {
+			return false
+		}
+	}
+	return true
 }
 
 // entityName strips the default "public." prefix for readability while keeping

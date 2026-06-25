@@ -405,11 +405,19 @@ func (p *parser) parseColumnDef(t *schema.Table, key string) {
 		return
 	}
 	col := schema.Column{Name: name, Type: p.parseType()}
+	// serial pseudo-types are implicitly NOT NULL (they carry a nextval default).
+	switch col.Type {
+	case "serial", "bigserial", "smallserial":
+		col.NotNull = true
+	}
 
+	// A leading CONSTRAINT <name> names whichever constraint clause follows it.
+	constraintName := ""
 	for !p.isTerminator(0) {
 		switch {
 		case p.acceptWord("constraint"):
-			p.ident() // named constraint; keep parsing the actual constraint
+			constraintName = p.ident() // names the next constraint clause
+			continue
 		case p.acceptWord("not"):
 			p.acceptWord("null")
 			col.NotNull = true
@@ -420,22 +428,38 @@ func (p *parser) parseColumnDef(t *schema.Table, key string) {
 			p.acceptWord("key")
 			col.PrimaryKey = true
 			col.NotNull = true
+			if constraintName != "" {
+				t.PrimaryKeyName = constraintName
+			}
 		case p.acceptWord("unique"):
-			t.Indexes = append(t.Indexes, schema.Index{Columns: []string{name}, Unique: true})
+			t.Indexes = append(t.Indexes, schema.Index{Name: constraintName, Columns: []string{name}, Unique: true})
 		case p.acceptWord("default"):
 			col.Default = p.captureExpr()
 		case p.acceptWord("check"):
 			if expr, ok := p.captureParenGroup(); ok {
-				t.Checks = append(t.Checks, expr)
+				t.Checks = append(t.Checks, schema.Check{Name: constraintName, Expr: expr})
 			}
 		case p.acceptWord("references"):
-			t.FKs = append(t.FKs, p.parseInlineReferences(name))
+			fk := p.parseInlineReferences(name)
+			fk.Name = constraintName
+			t.FKs = append(t.FKs, fk)
+		case p.acceptWord("generated"):
+			// GENERATED ... AS IDENTITY columns are implicitly NOT NULL.
+			if p.parseGenerated() {
+				col.NotNull = true
+			}
+		case p.acceptWord("collate"):
+			p.nameParts() // collation name (may be schema-qualified or quoted)
 		default:
-			// Unknown column clause (GENERATED, COLLATE, ...): stop and skip rest.
+			// Unknown column clause (e.g. an unsupported storage option): stop and
+			// skip the remainder of this element.
 			p.skipElement()
 			t.AddColumn(col)
 			return
 		}
+		// A pending CONSTRAINT name applies only to the clause directly after it;
+		// the "constraint" case above uses continue to carry it across.
+		constraintName = ""
 	}
 	t.AddColumn(col)
 }
@@ -449,6 +473,31 @@ func (p *parser) parseInlineReferences(localCol string) schema.ForeignKey {
 		fk.RefColumns = cols
 	}
 	return fk
+}
+
+// parseGenerated consumes the remainder of a column's GENERATED clause (the
+// GENERATED keyword has already been accepted) and reports whether it is an
+// IDENTITY column. It handles both forms:
+//
+//	GENERATED { ALWAYS | BY DEFAULT } AS IDENTITY [ ( sequence_options ) ]
+//	GENERATED ALWAYS AS ( expr ) STORED
+func (p *parser) parseGenerated() (identity bool) {
+	p.acceptWord("always")
+	if p.acceptWord("by") {
+		p.acceptWord("default")
+	}
+	p.acceptWord("as")
+	if p.acceptWord("identity") {
+		if p.isPunct("(") {
+			p.captureParenGroup() // sequence options
+		}
+		return true
+	}
+	if p.isPunct("(") {
+		p.captureParenGroup() // generation expression
+	}
+	p.acceptWord("stored")
+	return false
 }
 
 func (p *parser) parseTableConstraint(t *schema.Table) {
@@ -467,6 +516,9 @@ func (p *parser) parseTableConstraint(t *schema.Table) {
 				col.NotNull = true
 			}
 		}
+		if name != "" {
+			t.PrimaryKeyName = name
+		}
 	case p.acceptWord("unique"):
 		t.Indexes = append(t.Indexes, schema.Index{
 			Name: name, Columns: p.optColumnList(), Unique: true,
@@ -484,7 +536,7 @@ func (p *parser) parseTableConstraint(t *schema.Table) {
 		t.FKs = append(t.FKs, fk)
 	case p.acceptWord("check"):
 		if expr, ok := p.captureParenGroup(); ok {
-			t.Checks = append(t.Checks, expr)
+			t.Checks = append(t.Checks, schema.Check{Name: name, Expr: expr})
 		}
 	}
 	p.skipElement()
