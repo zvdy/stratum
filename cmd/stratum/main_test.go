@@ -57,6 +57,61 @@ func TestRunEndToEnd(t *testing.T) {
 	}
 }
 
+// TestRunCheckMode verifies that --check passes when the output is current,
+// fails when it is stale or missing, and never writes the file.
+func TestRunCheckMode(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "001.sql"),
+		[]byte(`CREATE TABLE users (id serial PRIMARY KEY, email text NOT NULL);`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(dir, "SCHEMA.md")
+
+	base := func() *options {
+		return &options{migrationsPath: dir, output: out, schemaName: "public"}
+	}
+
+	// --check on a missing file is an error and writes nothing.
+	chk := base()
+	chk.check = true
+	if err := run(chk); err == nil {
+		t.Errorf("--check on missing output should error")
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Errorf("--check must not create the output file")
+	}
+
+	// Generate the file, then --check should pass (the volatile timestamp line
+	// must be ignored across the two runs).
+	if err := run(base()); err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	before, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chk = base()
+	chk.check = true
+	if err := run(chk); err != nil {
+		t.Errorf("--check on up-to-date output should pass, got: %v", err)
+	}
+	after, _ := os.ReadFile(out)
+	if string(before) != string(after) {
+		t.Errorf("--check must not modify the output file")
+	}
+
+	// Change the schema; --check should now fail.
+	if err := os.WriteFile(filepath.Join(dir, "002.sql"),
+		[]byte(`ALTER TABLE users ADD COLUMN created_at timestamptz;`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	chk = base()
+	chk.check = true
+	if err := run(chk); err == nil {
+		t.Errorf("--check should fail when the schema changed")
+	}
+}
+
 // TestRunMissingPathErrors verifies a non-existent migrations dir is fatal.
 func TestRunMissingPathErrors(t *testing.T) {
 	opts := &options{

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -24,6 +25,7 @@ type options struct {
 	push           bool
 	commitMessage  string
 	verbose        bool
+	check          bool
 }
 
 func main() {
@@ -48,6 +50,7 @@ func main() {
 	f.BoolVar(&opts.push, "push", false, "git add + commit + push the output file")
 	f.StringVar(&opts.commitMessage, "commit-message", "chore: update schema docs", "commit message used with --push")
 	f.BoolVar(&opts.verbose, "verbose", false, "log each parsed statement")
+	f.BoolVar(&opts.check, "check", false, "verify the output file is up to date; exit non-zero if it would change (no write)")
 	_ = root.MarkFlagRequired("migrations-path")
 
 	if err := root.Execute(); err != nil {
@@ -83,6 +86,10 @@ func run(opts *options) error {
 	filtered := sch.Filter(opts.schemaName)
 	doc := render.Markdown(filtered, opts.migrationsPath, time.Now())
 
+	if opts.check {
+		return checkUpToDate(opts.output, doc)
+	}
+
 	if err := os.WriteFile(opts.output, []byte(doc), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", opts.output, err)
 	}
@@ -94,6 +101,40 @@ func run(opts *options) error {
 		}
 	}
 	return nil
+}
+
+// checkUpToDate compares the freshly rendered document against the committed
+// output file and returns an error (non-zero exit) if they differ or the file
+// is missing. The volatile generation-timestamp line is ignored so only schema
+// content is compared — this is the CI gate that fails a PR when the docs are
+// stale. Nothing is written.
+func checkUpToDate(path, fresh string) error {
+	existing, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("%s does not exist; run stratum to generate it", path)
+		}
+		return fmt.Errorf("reading %s: %w", path, err)
+	}
+	if ignoreGeneratedLine(string(existing)) == ignoreGeneratedLine(fresh) {
+		fmt.Fprintf(os.Stderr, "%s is up to date\n", path)
+		return nil
+	}
+	return fmt.Errorf("%s is out of date; re-run stratum to regenerate it", path)
+}
+
+// ignoreGeneratedLine drops the single volatile timestamp line so two documents
+// rendered at different times compare equal when their schema content matches.
+func ignoreGeneratedLine(doc string) string {
+	lines := strings.Split(doc, "\n")
+	kept := lines[:0]
+	for _, ln := range lines {
+		if strings.HasPrefix(ln, render.GeneratedLinePrefix) {
+			continue
+		}
+		kept = append(kept, ln)
+	}
+	return strings.Join(kept, "\n")
 }
 
 // gitPush stages, commits and pushes the output file. It is the only part of the

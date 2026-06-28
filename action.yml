@@ -45,6 +45,10 @@ inputs:
     description: If "true", git add + commit + push the output file.
     required: false
     default: "false"
+  check:
+    description: If "true", verify the output file is up to date and fail (no write) if it would change.
+    required: false
+    default: "false"
   commit-message:
     description: Commit message used with push.
     required: false
@@ -79,5 +83,6 @@ runs:
               --commit-message "${{ inputs.commit-message }}")
         [ "${{ inputs.recursive }}" = "true" ] && ARGS+=(--recursive)
         [ "${{ inputs.push }}" = "true" ] && ARGS+=(--push)
+        [ "${{ inputs.check }}" = "true" ] && ARGS+=(--check)
         [ "${{ inputs.verbose }}" = "true" ] && ARGS+=(--verbose)
         "${RUNNER_TEMP}/stratum" "${ARGS[@]}"

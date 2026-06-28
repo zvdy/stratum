@@ -73,10 +73,24 @@ stratum --migrations-path db/migrations --output SCHEMA.md
 | `--recursive` | `false` | Discover `.sql` files recursively |
 | `--push` | `false` | `git add` + `commit` + `push` the output file |
 | `--commit-message` | `chore: update schema docs` | Commit message used with `--push` |
+| `--check` | `false` | Verify the output file is up to date; exit non-zero if it would change (writes nothing) |
 | `--verbose` | `false` | Log each parsed statement |
 
 The tool exits non-zero if any file fails to parse. It warns (non-fatal) on
 unknown statement types, dangling foreign keys, and empty migration files.
+
+### Keeping docs fresh in CI
+
+Use `--check` as a gate so a pull request fails until its schema docs are
+regenerated (the volatile timestamp line is ignored, so only schema content
+counts):
+
+```bash
+stratum --migrations-path db/migrations --output SCHEMA.md --check
+```
+
+This is the read-only alternative to `--push`: no bot commits, the author
+regenerates and commits `SCHEMA.md` themselves.
 
 ## Migration ordering
 
