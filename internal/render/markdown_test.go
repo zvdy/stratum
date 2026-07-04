@@ -57,6 +57,21 @@ func TestMarkdownColumnRows(t *testing.T) {
 	}
 }
 
+func TestAnchorSlugs(t *testing.T) {
+	tests := map[string]string{
+		"users":          "users",
+		"audit_log":      "audit_log", // underscores preserved, like GitHub
+		"Billing Events": "billing-events",
+		"auth_users":     "auth_users",
+		"a.b":            "ab",
+	}
+	for in, want := range tests {
+		if got := anchor(in); got != want {
+			t.Errorf("anchor(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestMarkdownEmptySchema(t *testing.T) {
 	doc := Markdown(emptySchema(), "x", time.Unix(0, 0).UTC())
 	if !strings.Contains(doc, "_No tables found._") {
