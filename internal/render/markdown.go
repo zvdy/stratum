@@ -142,15 +142,18 @@ func constraintTags(t *schema.Table, c schema.Column) string {
 	return strings.Join(tags, ", ")
 }
 
-// anchor mimics GitHub's heading-to-anchor slug for the TOC links.
+// anchor mimics GitHub's heading-to-anchor slug for the TOC links: lowercase,
+// punctuation stripped, spaces and hyphens become '-', and underscores are
+// preserved (GitHub and Python-Markdown both keep them, so "audit_log" links
+// as "#audit_log", not "#audit-log").
 func anchor(s string) string {
 	s = strings.ToLower(s)
 	var b strings.Builder
 	for _, r := range s {
 		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '_':
 			b.WriteRune(r)
-		case r == ' ', r == '-', r == '_':
+		case r == ' ', r == '-':
 			b.WriteByte('-')
 		}
 	}

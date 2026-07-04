@@ -3,6 +3,9 @@
 /dist/
 *.exe
 
+# MkDocs build output (deployed by .github/workflows/docs.yml)
+/site/
+
 # Go
 *.test
 *.out

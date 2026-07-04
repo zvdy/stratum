@@ -1,0 +1,51 @@
+site_name: stratum
+site_description: Static PostgreSQL migrations → Mermaid ERD — no database, no cgo.
+site_url: https://zvdy.github.io/stratum/
+repo_url: https://github.com/zvdy/stratum
+repo_name: zvdy/stratum
+
+theme:
+  name: material
+  logo: stratum-logo.png
+  favicon: stratum-logo.png
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Usage: usage.md
+  - GitHub Action: github-action.md
+  - Parser: parser.md
+  - Live example: example.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        # Render ```mermaid fences as live diagrams — stratum's whole output
+        # format — instead of code blocks.
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
