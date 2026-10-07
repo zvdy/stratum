@@ -97,7 +97,12 @@
   margin: 0.25rem 0.3rem;
 }
 
-/* Feature cards. */
+/* Feature cards: a 2x2 grid on wide screens, stacked on narrow ones. */
+@media screen and (min-width: 45em) {
+  .md-typeset .grid.cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 .md-typeset .grid.cards > ul > li {
   border: 1px solid var(--stratum-border);
   border-radius: 12px;
