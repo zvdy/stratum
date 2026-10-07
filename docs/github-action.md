@@ -1,14 +1,32 @@
 # GitHub Action
 
 stratum ships as a composite GitHub Action that builds the binary from source
-(pure Go, no C toolchain) and runs it against your migrations — entirely
-offline, on the runner.
+(pure Go, no C toolchain) and runs it against your migrations, entirely
+offline on the runner.
+
+!!! note "Versioning"
+    No release tag has been published yet, so the examples use `@main`. For
+    reproducible builds, pin to a commit SHA (`zvdy/stratum@<sha>`).
+
+## Gate pull requests
+
+The job fails when `SCHEMA.md` is stale, and the author regenerates and
+commits it themselves. No bot commits:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: zvdy/stratum@main
+  with:
+    migrations-path: db/migrations
+    output: SCHEMA.md
+    check: "true"
+```
 
 ## Generate and push schema docs
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: zvdy/stratum@v1
+- uses: zvdy/stratum@main
   with:
     migrations-path: db/migrations
     output: SCHEMA.md
@@ -17,22 +35,8 @@ offline, on the runner.
 ```
 
 With `push: "true"` the action commits and pushes the regenerated `SCHEMA.md`
-back to the branch (the workflow needs `contents: write` permission and a
-checkout with credentials).
-
-## Gate pull requests instead
-
-If you'd rather fail the PR than push bot commits, use `check` — the job exits
-non-zero when `SCHEMA.md` is stale, and the author regenerates it themselves:
-
-```yaml
-- uses: actions/checkout@v4
-- uses: zvdy/stratum@v1
-  with:
-    migrations-path: db/migrations
-    output: SCHEMA.md
-    check: "true"
-```
+back to the branch. The workflow needs `contents: write` permission and a
+checkout with credentials.
 
 ## Inputs
 
