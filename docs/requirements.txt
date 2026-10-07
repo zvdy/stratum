@@ -1,0 +1,4 @@
+# Pinned to the MkDocs 1.x line: MkDocs 2.0 is not compatible with
+# mkdocs-material, and an unpinned install could pull it in.
+mkdocs>=1.6,<2
+mkdocs-material>=9.6,<10

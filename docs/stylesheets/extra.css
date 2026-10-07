@@ -1,0 +1,152 @@
+/* stratum docs theme: slate surfaces with an indigo accent, tuned for both
+   schemes. Material reads these variables when primary/accent = custom. */
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #0f172a;
+  --md-primary-fg-color--light: #1e293b;
+  --md-primary-fg-color--dark: #020617;
+  --md-primary-bg-color: #f8fafc;
+  --md-primary-bg-color--light: rgba(248, 250, 252, 0.7);
+  --md-accent-fg-color: #4f46e5;
+  --md-accent-fg-color--transparent: rgba(79, 70, 229, 0.1);
+  --md-accent-bg-color: #ffffff;
+  --md-typeset-a-color: #4f46e5;
+  --md-default-bg-color: #ffffff;
+  --md-code-bg-color: #f1f5f9;
+  --stratum-border: #e2e8f0;
+  --stratum-surface: #f8fafc;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-hue: 225;
+  --md-default-bg-color: #0b1120;
+  --md-primary-fg-color: #0b1120;
+  --md-primary-fg-color--light: #111a2e;
+  --md-primary-fg-color--dark: #060a14;
+  --md-primary-bg-color: #e2e8f0;
+  --md-primary-bg-color--light: rgba(226, 232, 240, 0.7);
+  --md-accent-fg-color: #818cf8;
+  --md-accent-fg-color--transparent: rgba(129, 140, 248, 0.12);
+  --md-accent-bg-color: #0b1120;
+  --md-typeset-a-color: #a5b4fc;
+  --md-code-bg-color: #111a2e;
+  --md-footer-bg-color: #060a14;
+  --md-footer-bg-color--dark: #04070e;
+  --stratum-border: #1e293b;
+  --stratum-surface: #0f1729;
+}
+
+/* Header: flat, with a hairline instead of a drop shadow. */
+.md-header,
+.md-header--shadow {
+  box-shadow: none;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+/* Buttons: readable in both schemes (Material's default secondary button
+   uses the header color as text, which vanishes on a dark page). */
+.md-typeset .md-button {
+  border-radius: 8px;
+  font-weight: 600;
+  color: var(--md-typeset-a-color);
+  border-color: currentColor;
+}
+.md-typeset .md-button--primary,
+.md-typeset .md-button--primary:hover,
+.md-typeset .md-button--primary:focus {
+  background-color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  color: var(--md-accent-bg-color);
+}
+.md-typeset .md-button--primary:hover {
+  filter: brightness(1.1);
+}
+
+/* Landing hero. */
+.hero {
+  text-align: center;
+  padding: 2rem 0 1rem;
+}
+.md-typeset .hero .hero-logo {
+  width: 120px;
+  height: 120px;
+  border-radius: 24px;
+  filter: drop-shadow(0 10px 24px var(--md-accent-fg-color--transparent));
+}
+.md-typeset .hero h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0.75rem 0 0;
+  background: linear-gradient(120deg, var(--md-default-fg-color) 35%, var(--md-accent-fg-color));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.md-typeset .hero h1 .headerlink {
+  display: none;
+}
+.md-typeset .hero .hero-tagline {
+  font-size: 1.15rem;
+  line-height: 1.6;
+  color: var(--md-default-fg-color--light);
+  max-width: 34rem;
+  margin: 1rem auto 1.5rem;
+}
+.md-typeset .hero .md-button {
+  margin: 0.25rem 0.3rem;
+}
+
+/* Feature cards: a 2x2 grid on wide screens, stacked on narrow ones. */
+@media screen and (min-width: 45em) {
+  .md-typeset .grid.cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.md-typeset .grid.cards > ul > li {
+  border: 1px solid var(--stratum-border);
+  border-radius: 12px;
+  background-color: var(--stratum-surface);
+  transition: border-color 150ms, transform 150ms;
+}
+.md-typeset .grid.cards > ul > li:hover {
+  border-color: var(--md-accent-fg-color);
+  box-shadow: none;
+  transform: translateY(-2px);
+}
+.md-typeset .grid.cards .lg {
+  color: var(--md-accent-fg-color);
+}
+.md-typeset .grid.cards hr {
+  border-color: var(--stratum-border);
+}
+
+/* Diagrams and code: framed surfaces. */
+.md-typeset .mermaid {
+  text-align: center;
+  padding: 1rem;
+  border: 1px solid var(--stratum-border);
+  border-radius: 12px;
+  background-color: var(--stratum-surface);
+}
+.md-typeset pre > code {
+  border-radius: 8px;
+}
+.md-typeset .tabbed-set {
+  border-radius: 8px;
+}
+
+/* Tables: hairline borders that match the palette. */
+.md-typeset table:not([class]) {
+  border: 1px solid var(--stratum-border);
+  border-radius: 8px;
+}
+.md-typeset table:not([class]) th {
+  background-color: var(--stratum-surface);
+}
+
+@media screen and (max-width: 44.9375em) {
+  .md-typeset .hero h1 {
+    font-size: 2.25rem;
+  }
+}

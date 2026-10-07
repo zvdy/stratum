@@ -1,34 +1,63 @@
 site_name: stratum
-site_description: Static PostgreSQL migrations → Mermaid ERD — no database, no cgo.
+site_description: Static PostgreSQL migrations → Mermaid ERD. No database, no cgo, no network.
 site_url: https://zvdy.github.io/stratum/
 repo_url: https://github.com/zvdy/stratum
 repo_name: zvdy/stratum
+edit_uri: edit/main/docs/
+copyright: stratum · static ERDs from PostgreSQL migrations
 
 theme:
   name: material
   logo: stratum-logo.png
   favicon: stratum-logo.png
+  font:
+    text: Inter
+    code: JetBrains Mono
   icon:
     repo: fontawesome/brands/github
+    edit: material/pencil-outline
   palette:
+    # Follows the OS setting until the reader picks a scheme.
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: blue grey
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
-        icon: material/brightness-7
+        icon: material/weather-sunny
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: blue grey
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+        icon: material/weather-night
+        name: Follow system theme
   features:
-    - navigation.sections
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
     - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - toc.follow
     - content.code.copy
+    - content.tabs.link
+    - content.action.edit
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/zvdy/stratum
+      name: stratum on GitHub
 
 nav:
   - Home: index.md
@@ -39,9 +68,20 @@ nav:
 
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
+  - tables
   - toc:
       permalink: true
-  - pymdownx.highlight
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.superfences:
       custom_fences:
         # Render ```mermaid fences as live diagrams — stratum's whole output
