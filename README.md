@@ -148,4 +148,4 @@ Fixtures live under `testdata/`.
 
 ## License
 
-[MIT](./LICENSE) © zvdy
+[BSD 3-Clause](./LICENSE) © zvdy
